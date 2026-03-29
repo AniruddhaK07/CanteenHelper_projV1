@@ -3,198 +3,315 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Canteen Predictor Dashboard</title>
-    <style>
-        :root {
-            --primary: #4f46e5;
-            --background: #f3f4f6;
-            --surface: #ffffff;
-            --text: #1f2937;
-            --text-light: #6b7280;
-        }
+    <title>Canteen AI Pro | Command Center</title>
+    
+    <!-- Google Fonts: Plus Jakarta Sans -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- React & Babel CDNs -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: var(--background);
-            color: var(--text);
-            margin: 0;
-            padding: 20px;
-        }
-
-        .container {
-            max-width: 900px;
-            margin: 0 auto;
-        }
-
-        header {
-            text-align: center;
-            margin-bottom: 30px;
-        }
-
-        h1 {
-            color: var(--primary);
-            margin-bottom: 5px;
-        }
-
-        .dashboard {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 20px;
-        }
-
-        @media (max-width: 768px) {
-            .dashboard {
-                grid-template-columns: 1fr;
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#f5f7ff',
+                            100: '#ebf0fe',
+                            600: '#4f46e5',
+                            700: '#4338ca',
+                            900: '#312e81',
+                        }
+                    }
+                }
             }
         }
+    </script>
 
-        .card {
-            background: var(--surface);
-            border-radius: 12px;
-            padding: 20px;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    <style>
+        body {
+            background-color: #f8fafc;
+            font-family: 'Plus Jakarta Sans', sans-serif;
         }
-
-        .card h2 {
-            font-size: 1.2rem;
-            margin-top: 0;
-            border-bottom: 2px solid var(--background);
-            padding-bottom: 10px;
-            color: var(--text);
+        .glass-card {
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(226, 232, 240, 0.8);
         }
-
-        .list-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 12px 0;
-            border-bottom: 1px solid var(--background);
+        .pulse-soft {
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
         }
-
-        .list-item:last-child {
-            border-bottom: none;
-        }
-
-        .badge {
-            background-color: #e0e7ff;
-            color: var(--primary);
-            padding: 4px 10px;
-            border-radius: 20px;
-            font-size: 0.9rem;
-            font-weight: 600;
-        }
-
-        .loading {
-            text-align: center;
-            color: var(--text-light);
-            padding: 20px;
-        }
-
-        .day-selector {
-            margin-bottom: 20px;
-            text-align: center;
-        }
-        
-        select {
-            padding: 8px 16px;
-            border-radius: 8px;
-            border: 1px solid #d1d5db;
-            font-size: 1rem;
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.6; }
         }
     </style>
 </head>
 <body>
+    <div id="root"></div>
 
-<div class="container">
-    <header>
-        <h1>Canteen Predictor Dashboard</h1>
-        <p>AI-Powered Peak Time & Dish Demand Forecasting</p>
-    </header>
+    <script type="text/babel">
+        const { useState, useEffect } = React;
 
-    <div class="day-selector">
-        <label for="daySelect">Select Day: </label>
-        <select id="daySelect" onchange="fetchPredictions()">
-            <option value="0">Monday</option>
-            <option value="1">Tuesday</option>
-            <option value="2">Wednesday</option>
-            <option value="3">Thursday</option>
-            <option value="4">Friday</option>
-            <option value="5">Saturday</option>
-        </select>
-    </div>
+        const App = () => {
+            const [selectedDay, setSelectedDay] = useState(0);
+            const [data, setData] = useState(null);
+            const [loading, setLoading] = useState(true);
+            const [error, setError] = useState(null);
+            const [time, setTime] = useState(new Date());
 
-    <div class="dashboard">
-        <!-- Peak Hours Card -->
-        <div class="card">
-            <h2>🔥 Predicted Peak Hours</h2>
-            <div id="peakHoursContent" class="loading">Loading predictions...</div>
-        </div>
+            const days = [
+                { id: 0, name: 'Mon' },
+                { id: 1, name: 'Tue' },
+                { id: 2, name: 'Wed' },
+                { id: 3, name: 'Thu' },
+                { id: 4, name: 'Fri' },
+                { id: 5, name: 'Sat' }
+            ];
 
-        <!-- Prep Recommendations Card -->
-        <div class="card">
-            <h2>👨‍🍳 Priority Prep List</h2>
-            <div id="prepListContent" class="loading">Loading predictions...</div>
-        </div>
-    </div>
-</div>
+            // 1. Digital Clock & Initial Day Logic
+            useEffect(() => {
+                const clockInterval = setInterval(() => setTime(new Date()), 1000);
+                
+                let today = new Date().getDay() - 1;
+                if (today === -1) today = 0; // Sunday -> Monday
+                if (today > 5) today = 5;    // Sunday -> Saturday limit
+                setSelectedDay(today);
 
-<script>
-    // Set default day to today
-    document.addEventListener("DOMContentLoaded", () => {
-        let today = new Date().getDay() - 1; // 0 is Monday in our backend, 0 is Sunday in JS
-        if (today === -1) today = 6; // Sunday -> 6
-        if(today === 6) today = 0; // If Sunday, default to Monday
-        document.getElementById("daySelect").value = today;
-        fetchPredictions();
-    });
+                return () => clearInterval(clockInterval);
+            }, []);
 
-    async function fetchPredictions() {
-        const day = document.getElementById("daySelect").value;
-        const peakDiv = document.getElementById("peakHoursContent");
-        const prepDiv = document.getElementById("prepListContent");
+            // 2. Data Fetching Logic (Maintained as requested)
+            useEffect(() => {
+                fetchData();
+            }, [selectedDay]);
 
-        peakDiv.innerHTML = '<div class="loading">Updating...</div>';
-        prepDiv.innerHTML = '<div class="loading">Updating...</div>';
+            const fetchData = async () => {
+                setLoading(true);
+                setError(null);
+                try {
+                    const response = await fetch(`/api/predict?day_of_week=${selectedDay}`);
+                    const result = await response.json();
+                    if (result.error) throw new Error(result.error);
+                    setData(result);
+                } catch (err) {
+                    setError(err.message || "Server connection failed");
+                } finally {
+                    setLoading(false);
+                }
+            };
 
-        try {
-            const response = await fetch(`/api/predict?day_of_week=${day}`);
-            const data = await response.json();
+            // Formatting helpers
+            const formatTime = (date) => date.toLocaleTimeString('en-US', { 
+                hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' 
+            });
 
-            if (data.error) {
-                peakDiv.innerHTML = `<div style="color:red">${data.error}</div>`;
-                prepDiv.innerHTML = `<div style="color:red">${data.error}</div>`;
-                return;
+            if (error) {
+                return (
+                    <div className="min-h-screen flex items-center justify-center p-4">
+                        <div className="bg-red-50 border border-red-200 text-red-700 px-8 py-6 rounded-2xl shadow-xl max-w-md text-center">
+                            <div className="text-4xl mb-4">⚠️</div>
+                            <h2 className="text-xl font-bold mb-2">System Offline</h2>
+                            <p className="opacity-80 mb-6">{error}</p>
+                            <button onClick={fetchData} className="bg-red-600 text-white px-6 py-2 rounded-xl hover:bg-red-700 transition">Retry Connection</button>
+                        </div>
+                    </div>
+                );
             }
 
-            // Render Peak Hours
-            peakDiv.innerHTML = '';
-            data.peak_hours.forEach((item, index) => {
-                const rank = index === 0 ? '🥇' : index === 1 ? '🥈' : '🥉';
-                peakDiv.innerHTML += `
-                    <div class="list-item">
-                        <span>${rank} ${item.hour}</span>
-                        <span class="badge">~${item.total_demand} Orders</span>
-                    </div>
-                `;
-            });
+            return (
+                <div className="min-h-screen pb-12">
+                    {/* Persistent Modern Header */}
+                    <header className="sticky top-0 z-50 glass-card border-b px-6 py-4 mb-8">
+                        <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
+                            <div className="flex items-center gap-4">
+                                <div className="w-10 h-10 bg-brand-600 rounded-xl flex items-center justify-center text-white font-black text-xl shadow-lg shadow-brand-200">
+                                    C
+                                </div>
+                                <div>
+                                    <h1 className="text-xl font-800 text-slate-900 tracking-tight">Canteen AI <span className="text-brand-600">Pro</span></h1>
+                                    <p className="text-xs text-slate-500 font-medium uppercase tracking-widest">Predictive Demand Engine</p>
+                                </div>
+                            </div>
 
-            // Render Prep List
-            prepDiv.innerHTML = '';
-            data.prep_recommendations.forEach((item, index) => {
-                prepDiv.innerHTML += `
-                    <div class="list-item">
-                        <span><strong>#${index + 1}</strong> ${item.dish}</span>
-                        <span class="badge">Prep for ~${item.predicted_demand}</span>
-                    </div>
-                `;
-            });
+                            <div className="flex items-center gap-6">
+                                <div className="text-right hidden sm:block">
+                                    <div className="text-sm font-bold text-slate-900">Nagpur, IN</div>
+                                    <div className="text-xs text-slate-500">34°C • Clear Sky</div>
+                                </div>
+                                <div className="h-10 w-px bg-slate-200 hidden sm:block"></div>
+                                <div className="bg-slate-900 text-white px-5 py-2 rounded-xl font-mono text-lg shadow-inner">
+                                    {formatTime(time)}
+                                </div>
+                            </div>
+                        </div>
+                    </header>
 
-        } catch (error) {
-            console.error("Error fetching data:", error);
-            peakDiv.innerHTML = '<div style="color:red">Failed to connect to backend.</div>';
-            prepDiv.innerHTML = '<div style="color:red">Failed to connect to backend.</div>';
-        }
-    }
-</script>
+                    <main className="max-w-7xl mx-auto px-4 sm:px-6">
+                        {/* Day Selector Tabs */}
+                        <div className="flex justify-center mb-10">
+                            <div className="inline-flex p-1.5 bg-slate-200/50 rounded-2xl backdrop-blur-sm">
+                                {days.map((day) => (
+                                    <button
+                                        key={day.id}
+                                        onClick={() => setSelectedDay(day.id)}
+                                        className={`px-6 py-2.5 rounded-xl text-sm font-bold transition-all duration-200 ${
+                                            selectedDay === day.id 
+                                            ? 'bg-white text-brand-600 shadow-sm' 
+                                            : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
+                                        }`}
+                                    >
+                                        {day.name}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Metric Summary Cards */}
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                            {[
+                                { label: 'Peak Volume', val: data ? data.peak_hours[0]?.total_demand : '...', sub: 'Predicted peak orders', color: 'text-brand-600' },
+                                { label: 'Wait Time Est.', val: data ? `${Math.round(data.peak_hours[0]?.total_demand / 4)}m` : '...', sub: 'During peak flow', color: 'text-amber-600' },
+                                { label: 'High Priority', val: data ? data.prep_recommendations.length : '...', sub: 'Dishes needing prep', color: 'text-emerald-600' }
+                            ].map((m, i) => (
+                                <div key={i} className={`glass-card p-6 rounded-3xl transition-all hover:shadow-lg ${loading ? 'pulse-soft' : ''}`}>
+                                    <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">{m.label}</p>
+                                    <h3 className={`text-3xl font-800 ${m.color} mb-1`}>{m.val}</h3>
+                                    <p className="text-xs text-slate-400 font-medium">{m.sub}</p>
+                                </div>
+                            ))}
+                        </div>
+
+                        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                            {/* Card 1: Priority Prep Table */}
+                            <div className="lg:col-span-7">
+                                <div className="glass-card rounded-3xl overflow-hidden h-full">
+                                    <div className="px-6 py-5 border-b border-slate-100 flex justify-between items-center bg-white">
+                                        <h2 className="font-800 text-slate-900 flex items-center gap-2">
+                                            <span className="text-xl">👨‍🍳</span> Priority Prep Table
+                                        </h2>
+                                        <span className="text-[10px] font-bold bg-emerald-100 text-emerald-700 px-2 py-1 rounded-md uppercase">Live Data</span>
+                                    </div>
+                                    <div className="overflow-x-auto">
+                                        <table className="w-full text-left">
+                                            <thead className="bg-slate-50/50 text-slate-500 text-[11px] font-bold uppercase tracking-widest">
+                                                <tr>
+                                                    <th className="px-6 py-4">Dish Name</th>
+                                                    <th className="px-6 py-4 text-center">Target Prep</th>
+                                                    <th className="px-6 py-4">Safety Buffer</th>
+                                                    <th className="px-6 py-4">Prep Start</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-slate-100">
+                                                {loading ? (
+                                                    [1,2,3,4].map(n => (
+                                                        <tr key={n} className="pulse-soft">
+                                                            <td colSpan="4" className="px-6 py-6"><div className="h-4 bg-slate-100 rounded w-full"></div></td>
+                                                        </tr>
+                                                    ))
+                                                ) : (
+                                                    data.prep_recommendations.map((item, idx) => (
+                                                        <tr key={idx} className="hover:bg-slate-50/50 transition">
+                                                            <td className="px-6 py-4">
+                                                                <div className="flex items-center gap-3">
+                                                                    <div className={`w-2 h-2 rounded-full ${idx === 0 ? 'bg-red-500' : 'bg-brand-400'}`}></div>
+                                                                    <span className="font-bold text-slate-700">{item.dish}</span>
+                                                                </div>
+                                                            </td>
+                                                            <td className="px-6 py-4 text-center">
+                                                                <span className="bg-brand-50 text-brand-700 px-3 py-1 rounded-lg font-bold text-sm">
+                                                                    {item.predicted_demand}
+                                                                </span>
+                                                            </td>
+                                                            <td className="px-6 py-4">
+                                                                <span className="text-xs font-semibold text-slate-400">
+                                                                    +{Math.ceil(item.predicted_demand * 0.15)} (15%)
+                                                                </span>
+                                                            </td>
+                                                            <td className="px-6 py-4">
+                                                                <span className="text-xs font-bold text-slate-600 bg-slate-100 px-2 py-1 rounded">10:30 AM</span>
+                                                            </td>
+                                                        </tr>
+                                                    ))
+                                                )}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Card 2: Peak Hours Forecast Visual */}
+                            <div className="lg:col-span-5">
+                                <div className="glass-card rounded-3xl p-6 h-full flex flex-col">
+                                    <div className="flex justify-between items-center mb-8">
+                                        <h2 className="font-800 text-slate-900 flex items-center gap-2 text-lg">
+                                            <span className="text-xl">🔥</span> Peak Forecast
+                                        </h2>
+                                        <div className="flex gap-1">
+                                            <div className="w-1.5 h-1.5 rounded-full bg-red-500"></div>
+                                            <div className="w-1.5 h-1.5 rounded-full bg-amber-500"></div>
+                                            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500"></div>
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-6 flex-grow">
+                                        {loading ? (
+                                            [1,2,3].map(n => <div key={n} className="h-16 bg-slate-100 rounded-2xl pulse-soft"></div>)
+                                        ) : (
+                                            data.peak_hours.map((item, idx) => {
+                                                const maxDemand = data.peak_hours[0].total_demand;
+                                                const percentage = Math.max(30, (item.total_demand / maxDemand) * 100);
+                                                const colorClass = idx === 0 ? 'bg-red-500' : idx === 1 ? 'bg-amber-500' : 'bg-brand-500';
+                                                
+                                                return (
+                                                    <div key={idx} className="relative">
+                                                        <div className="flex justify-between items-end mb-2">
+                                                            <span className="text-sm font-bold text-slate-700">{item.hour}</span>
+                                                            <span className="text-xs font-black text-slate-900 uppercase">~{item.total_demand} Orders</span>
+                                                        </div>
+                                                        <div className="h-3 w-full bg-slate-100 rounded-full overflow-hidden shadow-inner">
+                                                            <div 
+                                                                className={`h-full ${colorClass} transition-all duration-1000 ease-out rounded-full shadow-lg shadow-inner`}
+                                                                style={{ width: `${percentage}%` }}
+                                                            ></div>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })
+                                        )}
+                                    </div>
+
+                                    {/* Manager Insight Box */}
+                                    {!loading && (
+                                        <div className="mt-8 p-4 bg-brand-900 rounded-2xl text-white">
+                                            <p className="text-[10px] font-bold uppercase tracking-widest text-brand-200 mb-1">Manager Insight</p>
+                                            <p className="text-xs font-medium opacity-90 leading-relaxed">
+                                                Expect peak traffic at <strong>{data.peak_hours[0]?.hour.split(' - ')[0]}</strong>. 
+                                                Ensure {data.prep_recommendations[0]?.dish} is ready 15 mins prior.
+                                            </p>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    </main>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
 </body>
 </html>
