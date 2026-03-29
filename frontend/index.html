@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Canteen Predictor Dashboard</title>
+    <style>
+        :root {
+            --primary: #4f46e5;
+            --background: #f3f4f6;
+            --surface: #ffffff;
+            --text: #1f2937;
+            --text-light: #6b7280;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--background);
+            color: var(--text);
+            margin: 0;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        h1 {
+            color: var(--primary);
+            margin-bottom: 5px;
+        }
+
+        .dashboard {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        @media (max-width: 768px) {
+            .dashboard {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .card {
+            background: var(--surface);
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        .card h2 {
+            font-size: 1.2rem;
+            margin-top: 0;
+            border-bottom: 2px solid var(--background);
+            padding-bottom: 10px;
+            color: var(--text);
+        }
+
+        .list-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid var(--background);
+        }
+
+        .list-item:last-child {
+            border-bottom: none;
+        }
+
+        .badge {
+            background-color: #e0e7ff;
+            color: var(--primary);
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: 600;
+        }
+
+        .loading {
+            text-align: center;
+            color: var(--text-light);
+            padding: 20px;
+        }
+
+        .day-selector {
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        select {
+            padding: 8px 16px;
+            border-radius: 8px;
+            border: 1px solid #d1d5db;
+            font-size: 1rem;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>Canteen Predictor Dashboard</h1>
+        <p>AI-Powered Peak Time & Dish Demand Forecasting</p>
+    </header>
+
+    <div class="day-selector">
+        <label for="daySelect">Select Day: </label>
+        <select id="daySelect" onchange="fetchPredictions()">
+            <option value="0">Monday</option>
+            <option value="1">Tuesday</option>
+            <option value="2">Wednesday</option>
+            <option value="3">Thursday</option>
+            <option value="4">Friday</option>
+            <option value="5">Saturday</option>
+        </select>
+    </div>
+
+    <div class="dashboard">
+        <!-- Peak Hours Card -->
+        <div class="card">
+            <h2>🔥 Predicted Peak Hours</h2>
+            <div id="peakHoursContent" class="loading">Loading predictions...</div>
+        </div>
+
+        <!-- Prep Recommendations Card -->
+        <div class="card">
+            <h2>👨‍🍳 Priority Prep List</h2>
+            <div id="prepListContent" class="loading">Loading predictions...</div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Set default day to today
+    document.addEventListener("DOMContentLoaded", () => {
+        let today = new Date().getDay() - 1; // 0 is Monday in our backend, 0 is Sunday in JS
+        if (today === -1) today = 6; // Sunday -> 6
+        if(today === 6) today = 0; // If Sunday, default to Monday
+        document.getElementById("daySelect").value = today;
+        fetchPredictions();
+    });
+
+    async function fetchPredictions() {
+        const day = document.getElementById("daySelect").value;
+        const peakDiv = document.getElementById("peakHoursContent");
+        const prepDiv = document.getElementById("prepListContent");
+
+        peakDiv.innerHTML = '<div class="loading">Updating...</div>';
+        prepDiv.innerHTML = '<div class="loading">Updating...</div>';
+
+        try {
+            const response = await fetch(`/api/predict?day_of_week=${day}`);
+            const data = await response.json();
+
+            if (data.error) {
+                peakDiv.innerHTML = `<div style="color:red">${data.error}</div>`;
+                prepDiv.innerHTML = `<div style="color:red">${data.error}</div>`;
+                return;
+            }
+
+            // Render Peak Hours
+            peakDiv.innerHTML = '';
+            data.peak_hours.forEach((item, index) => {
+                const rank = index === 0 ? '🥇' : index === 1 ? '🥈' : '🥉';
+                peakDiv.innerHTML += `
+                    <div class="list-item">
+                        <span>${rank} ${item.hour}</span>
+                        <span class="badge">~${item.total_demand} Orders</span>
+                    </div>
+                `;
+            });
+
+            // Render Prep List
+            prepDiv.innerHTML = '';
+            data.prep_recommendations.forEach((item, index) => {
+                prepDiv.innerHTML += `
+                    <div class="list-item">
+                        <span><strong>#${index + 1}</strong> ${item.dish}</span>
+                        <span class="badge">Prep for ~${item.predicted_demand}</span>
+                    </div>
+                `;
+            });
+
+        } catch (error) {
+            console.error("Error fetching data:", error);
+            peakDiv.innerHTML = '<div style="color:red">Failed to connect to backend.</div>';
+            prepDiv.innerHTML = '<div style="color:red">Failed to connect to backend.</div>';
+        }
+    }
+</script>
+</body>
+</html>
